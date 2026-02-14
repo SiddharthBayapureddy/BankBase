@@ -1,0 +1,93 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0" version="29.3.8">
+  <diagram name="Banking ERD Clean Vertical" id="0">
+    <mxGraphModel dx="1962" dy="1135" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="3-Oa5s5tvTjbaEnAuU_--5" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="940" width="1140" x="240" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;fontStyle=1;" value="Branches&#xa;------------------&#xa;PK branch_id&#xa;branch_name&#xa;address&#xa;city&#xa;state&#xa;ifsc_code" vertex="1">
+          <mxGeometry height="160" width="260" x="20" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="Employees&#xa;------------------&#xa;PK employee_id&#xa;FK branch_id&#xa;name&#xa;role&#xa;hired_at&#xa;status" vertex="1">
+          <mxGeometry height="160" width="260" x="20" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="Customers&#xa;------------------&#xa;PK customer_id&#xa;first_name&#xa;last_name&#xa;dob&#xa;email&#xa;mobile&#xa;created_at" vertex="1">
+          <mxGeometry height="180" width="260" x="870" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;fontStyle=1;" value="Accounts&lt;br&gt;------------------&lt;br&gt;PK account_id&lt;br&gt;FK customer_id&lt;br&gt;FK branch_id&lt;br&gt;account_number&lt;br&gt;balance&lt;div&gt;account_type&lt;br&gt;currency&lt;br&gt;status&lt;br&gt;opened_at&lt;/div&gt;" vertex="1">
+          <mxGeometry height="200" width="300" x="420" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="Transactions&lt;br&gt;------------------&lt;br&gt;PK tx_id&lt;br&gt;FK account_id&lt;br&gt;tx_type&lt;br&gt;amount&lt;br&gt;balance_after&lt;br&gt;FK related_account&lt;br&gt;created_at&lt;br&gt;description" vertex="1">
+          <mxGeometry height="200" width="300" x="420" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="Loans&lt;br&gt;------------------&lt;br&gt;PK loan_id&lt;br&gt;FK account_id&lt;div&gt;&lt;div&gt;principal&lt;div&gt;FK employee_id&lt;br&gt;outstanding&lt;br&gt;interest_rate&lt;br&gt;term_months&lt;br&gt;status&lt;/div&gt;&lt;div&gt;created_at&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="180" width="260" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="emi1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="LoanEMI&#xa;------------------&#xa;PK emi_id&#xa;FK loan_id&#xa;due_date&#xa;amount&#xa;paid_amount&#xa;paid_at" vertex="1">
+          <mxGeometry height="160" width="260" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="fd1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="FD&lt;br&gt;------------------&lt;br&gt;PK fd_id&lt;br&gt;FK account_id&lt;br&gt;principal&lt;br&gt;rate&lt;br&gt;start_date&lt;br&gt;maturity_date&lt;br&gt;status&lt;div&gt;created_at&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="180" width="260" x="800" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="card1" parent="3-Oa5s5tvTjbaEnAuU_--5" style="shape=rectangle;whiteSpace=wrap;html=1;" value="Cards&#xa;------------------&#xa;PK card_id&#xa;FK account_id&#xa;card_number&#xa;card_type&#xa;expiry&#xa;status" vertex="1">
+          <mxGeometry height="160" width="260" x="880" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="b1" style="endArrow=block;" target="a1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r2" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="b1" style="endArrow=block;" target="e1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="c1" style="endArrow=block;exitX=0.01;exitY=0.544;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.783;entryY=-0.002;entryDx=0;entryDy=0;entryPerimeter=0;" target="a1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="110" />
+            </Array>
+            <mxPoint x="870" y="100" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r4" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="a1" style="endArrow=block;" target="t1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="l1" style="endArrow=block;" target="emi1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r7" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="a1" style="endArrow=block;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" target="fd1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="470" />
+              <mxPoint x="930" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r8" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="a1" style="endArrow=block;exitX=1;exitY=0.75;exitDx=0;exitDy=0;" target="card1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3-Oa5s5tvTjbaEnAuU_--1" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="e1" style="endArrow=classic;html=1;rounded=0;entryX=0.191;entryY=-0.022;entryDx=0;entryDy=0;exitX=0.11;exitY=0.999;exitDx=0;exitDy=0;entryPerimeter=0;exitPerimeter=0;" target="l1" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points" />
+            <mxPoint x="430" y="520" as="sourcePoint" />
+            <mxPoint x="480" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3-Oa5s5tvTjbaEnAuU_--3" edge="1" parent="3-Oa5s5tvTjbaEnAuU_--5" source="a1" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="l1" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="260" />
+              <mxPoint x="370" y="510" />
+              <mxPoint x="130" y="510" />
+            </Array>
+            <mxPoint x="370" y="280" as="sourcePoint" />
+            <mxPoint x="130" y="510" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
