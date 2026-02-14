@@ -70,12 +70,14 @@ The database consists of the following tables:
 
 ```
 bankbase/
-├── scripts/
-│   ├── schema.sql       # All CREATE TABLE statements
-│   ├── seed.sql         # Sample data for testing
-│   └── queries.sql      # Practice/demo queries
-├── docs/
-│   └── er_diagram.png   # ER diagram
+├── schema/
+│   ├── accounts.sql       
+│   ├── branches.sql         
+│   └── customers.sql      
+├── seed/
+│   └── seed.sql # Seeding with sample data
+├── banking_er.xml # Schema (draw.io format)
+├── schema.png  # Schema of the database 
 └── README.md
 ```
 
@@ -97,12 +99,10 @@ All schema changes must be committed to GitHub as `.sql` scripts before applying
 
 ## Contributors
 
-- Your Name
 - Teammate 1
 - Teammate 2
 
 ---
 
 ## License
-
 This project is for educational purposes only.
