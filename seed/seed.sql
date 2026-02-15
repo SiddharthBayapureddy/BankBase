@@ -19,3 +19,13 @@ INSERT INTO accounts (customer_id, branch_id, account_number, balance, account_t
 (3, 3, 'ACC0000000003', 15000.00, 'savings', 'INR'),
 (4, 1, 'ACC0000000004', 75000.00, 'savings', 'INR'),
 (5, 2, 'ACC0000000005', 10000.00, 'current', 'INR');
+
+INSERT INTO transactions (account_id, tx_type, amount, balance_after, related_account, description) VALUES
+INSERT INTO transactions (account_id, tx_type, amount, balance_after, related_account, description) VALUES
+-- Account 1 at 0, deposits 25k
+(1, 'DEPOSIT', 25000.00, 25000.00, NULL, 'Initial account funding'),
+-- Withdrawa
+(3, 'WITHDRAWAL', 5000.00, 10000.00, NULL, 'ATM Cash Withdrawal - Banjara Hills'),
+/*from Sneha to vikrm*/
+(4, 'DEBIT', 5000.00, 70000.00, 5, 'Transfer to Vikram Singh'),
+(5, 'CREDIT', 5000.00, 15000.00, 4, 'Transfer in from Sneha Reddy');
