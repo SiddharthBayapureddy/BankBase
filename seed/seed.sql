@@ -28,3 +28,14 @@ INSERT INTO transactions (account_id, tx_type, amount, balance_after, related_ac
 /*from Sneha to vikrm*/
 (4, 'DEBIT', 5000.00, 70000.00, 5, 'Transfer to Vikram Singh'),
 (5, 'CREDIT', 5000.00, 15000.00, 4, 'Transfer in from Sneha Reddy');
+
+-- Employees
+INSERT INTO employees (branch_id, name, email, role, status, salary, hired_at)
+VALUES 
+    (1, 'Alice Thompson', 'alice.t@globalbank.com', 'Manager', 'Active', 95000.00, '2020-01-15'),
+    (1, 'Marcus Chen', 'm.chen@globalbank.com', 'Teller', 'Active', 48000.00, '2022-06-10'),
+    (2, 'Sarah Jenkins', 's.jenkins@globalbank.com', 'Loan Officer', 'Active', 62000.00, '2021-03-22'),
+    (2, 'Robert Miller', 'r.miller@globalbank.com', 'Teller', 'On Leave', 45000.00, '2023-11-01'),
+    (3, 'Elena Rodriguez', 'e.rodriguez@globalbank.com', 'Auditor', 'Active', 78000.00, '2019-08-30'),
+    (1, 'Kevin White', 'k.white@globalbank.com', 'IT Support', 'Active', 55000.00, '2024-02-12'),
+    (3, 'Jessica Wu', 'j.wu@globalbank.com', 'Intern', 'Active', 32000.00, '2024-05-01')
