@@ -38,7 +38,7 @@ VALUES
     (2, 'Robert Miller', 'r.miller@globalbank.com', 'Teller', 'On Leave', 45000.00, '2023-11-01'),
     (3, 'Elena Rodriguez', 'e.rodriguez@globalbank.com', 'Auditor', 'Active', 78000.00, '2019-08-30'),
     (1, 'Kevin White', 'k.white@globalbank.com', 'IT Support', 'Active', 55000.00, '2024-02-12'),
-    (3, 'Jessica Wu', 'j.wu@globalbank.com', 'Intern', 'Active', 32000.00, '2024-05-01')
+    (3, 'Jessica Wu', 'j.wu@globalbank.com', 'Intern', 'Active', 32000.00, '2024-05-01');
 
 INSERT INTO cards 
 (account_id, card_number, card_type, expiry_date, cvv, status, credit_limit, withdrawal_limit)
@@ -62,4 +62,21 @@ VALUES
 (5, '4532123412345551', 'Debit',  '2029-05-31', '567', 'Active', NULL, 12000),
 (5, '4532123412345552', 'Credit', '2031-08-31', '765', 'Active', 60000, NULL);
 
+-- Fixed Deposits
+INSERT INTO fixed_deposits 
+(customer_id, linked_account_id, fd_number, principal_amount, interest_rate, tenure_months, start_date, maturity_date, maturity_amount, status) 
+VALUES
+-- Rahul Sharma (Active FD, matures later in 2026)
+(1, 1, 'FD0000000001', 100000.00, 6.50, 12, '2025-08-01', '2026-08-01', 106500.00, 'ACTIVE'),
 
+-- Priya Mehta (Active FD, long term)
+(2, 2, 'FD0000000002', 500000.00, 7.00, 24, '2025-01-15', '2027-01-15', 570000.00, 'ACTIVE'),
+
+-- Arjun Nair (Matured FD, started in 2024, matured in 2025)
+(3, 3, 'FD0000000003', 50000.00, 6.00, 12, '2024-02-10', '2025-02-10', 53000.00, 'MATURED'),
+
+-- Sneha Reddy (Prematurely Closed FD)
+(4, 4, 'FD0000000004', 200000.00, 6.50, 36, '2024-05-01', '2027-05-01', 239000.00, 'PREMATURELY_CLOSED'),
+
+-- Vikram Singh (Active FD, just opened recently)
+(5, 5, 'FD0000000005', 75000.00, 5.50, 6, '2026-01-10', '2026-07-10', 77062.50, 'ACTIVE');
