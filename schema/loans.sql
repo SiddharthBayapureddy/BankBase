@@ -14,3 +14,6 @@ CREATE TABLE loans (
     status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('PENDING', 'APPROVED', 'ACTIVE', 'CLOSED', 'DEFAULTED')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE loans
+ADD COLUMN employee_id INT REFERENCES employees(employee_id);
