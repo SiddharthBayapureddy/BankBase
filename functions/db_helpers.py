@@ -40,6 +40,70 @@ def update_account_balance(account_id: int, new_balance: Decimal) -> None:
     )
 
 
+def set_account_status(account_id: int, status: str) -> None:
+    """
+    Soft-delete or change status of an account.
+
+    Example statuses (based on schema): 'active', 'closed', etc.
+    """
+    execute(
+        "UPDATE accounts SET status = %s WHERE account_id = %s",
+        (status, account_id),
+    )
+
+
+def create_account(
+    customer_id: int,
+    branch_id: int,
+    account_type: str,
+    currency: str,
+    initial_deposit: Decimal,
+) -> Dict[str, Any]:
+    """
+    Create a new account for a customer with an initial balance.
+    """
+    # Simple account number generator: BRANCHID + CUSTOMERID + timestamp-based suffix
+    import time
+
+    suffix = int(time.time() * 1000) % 10_000_000
+    account_number = f"ACC{branch_id:03d}{customer_id:05d}{suffix:07d}"[:20]
+
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            """
+            INSERT INTO accounts (
+                customer_id,
+                branch_id,
+                account_number,
+                balance,
+                account_type,
+                currency
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (
+                customer_id,
+                branch_id,
+                account_number,
+                initial_deposit,
+                account_type,
+                currency,
+            ),
+        )
+        row = cur.fetchone()
+
+    return row
+
+
+def get_all_branches() -> List[Dict[str, Any]]:
+    """Return all branches for use in dropdowns."""
+    return fetch_all(
+        "SELECT * FROM branches ORDER BY branch_name ASC, branch_id ASC",
+        (),
+    )
+
+
 def create_transaction(
     account_id: int,
     tx_type: str,

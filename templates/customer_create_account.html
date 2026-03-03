@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Open New Account - BankBase{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Open a New Account</h2>
+        <p class="card-subtitle">Choose branch and account type for your new account.</p>
+    </div>
+
+    <form method="post" id="customerCreateAccountForm">
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label" for="branch_id">Branch</label>
+                <select id="branch_id" name="branch_id" class="form-select" required>
+                    <option value="">Select a branch</option>
+                    {% for b in branches %}
+                    <option value="{{ b.branch_id }}">
+                        {{ b.branch_name }} ({{ b.ifsc_code }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="account_type">Account Type</label>
+                <select id="account_type" name="account_type" class="form-select" required>
+                    <option value="Savings">Savings</option>
+                    <option value="Current">Current</option>
+                    <option value="Salary">Salary</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label" for="currency">Currency</label>
+                <input type="text" id="currency" name="currency" class="form-input" value="INR">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="initial_deposit">Initial Deposit</label>
+                <input type="number" step="0.01" min="0" id="initial_deposit" name="initial_deposit" class="form-input">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="customerCreateAccountBtn">Open Account</button>
+        <p class="mt-2">
+            <a href="{{ url_for('customer_dashboard') }}">Back to Dashboard</a>
+        </p>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        bankbaseUtils.handleFormSubmit('customerCreateAccountForm', 'customerCreateAccountBtn');
+    });
+</script>
+{% endblock %}
+

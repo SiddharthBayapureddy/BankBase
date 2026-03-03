@@ -31,6 +31,11 @@
         <div class="card-header">
             <h3 class="card-title">Your Accounts</h3>
             <p class="card-subtitle">Click an account to view statement or transactions.</p>
+            <p class="mt-1">
+                <a href="{{ url_for('customer_create_account') }}" class="btn btn-primary btn-small">
+                    Open New Account
+                </a>
+            </p>
         </div>
 
         {% if accounts %}
@@ -55,6 +60,9 @@
                         <td class="text-right">
                             <a href="{{ url_for('customer_transactions', account_id=a.account_id) }}" class="btn btn-secondary btn-small">Transactions</a>
                             <a href="{{ url_for('customer_statement', account_id=a.account_id) }}" class="btn btn-primary btn-small">Statement</a>
+                            <form method="post" action="{{ url_for('customer_close_account', account_id=a.account_id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-danger btn-small">Close</button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}

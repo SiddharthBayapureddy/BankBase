@@ -49,6 +49,68 @@ def create_app() -> Flask:
     # CUSTOMER AUTH + CORE
     # -----------------------------
 
+    @app.route("/customer/signup", methods=["GET", "POST"])
+    def customer_signup():
+        if request.method == "POST":
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            dob = request.form.get("dob", "").strip()
+            email = request.form.get("email", "").strip()
+            mobile = request.form.get("mobile", "").strip()
+            password = request.form.get("password", "")
+            confirm_password = request.form.get("confirm_password", "")
+
+            if password != confirm_password:
+                flash("Passwords do not match.", "error")
+                return redirect(url_for("customer_signup"))
+
+            if customer_core.get_customer_by_mobile(mobile):
+                flash("A customer with this mobile already exists.", "error")
+                return redirect(url_for("customer_signup"))
+
+            customer = customer_core.create_customer(
+                first_name=first_name,
+                last_name=last_name,
+                dob=dob,
+                email=email,
+                mobile=mobile,
+                password=password,
+            )
+
+            session["user_type"] = "customer"
+            session["customer_id"] = customer["customer_id"]
+            session["user_name"] = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip() or "Customer"
+            flash("Account created successfully. Welcome!", "success")
+            return redirect(url_for("customer_dashboard"))
+
+        return render_template("customer_signup.html")
+
+    @app.route("/customer/account/create", methods=["GET", 'POST'])
+    def customer_create_account():
+        if session.get("user_type") != "customer":
+            return redirect(url_for("index"))
+
+        customer_id = session.get("customer_id")
+
+        if request.method == "POST":
+            branch_id = int(request.form["branch_id"])
+            account_type = request.form.get("account_type", "Savings")
+            currency = request.form.get("currency", "INR")
+            initial_deposit = float(request.form.get("initial_deposit") or 0)
+
+            db_helpers.create_account(
+                customer_id=customer_id,
+                branch_id=branch_id,
+                account_type=account_type,
+                currency=currency,
+                initial_deposit=initial_deposit,
+            )
+            flash("New account created successfully.", "success")
+            return redirect(url_for("customer_dashboard"))
+
+        branches = db_helpers.get_all_branches()
+        return render_template("customer_create_account.html", branches=branches)
+
     @app.route("/customer/login", methods=["POST"])
     def customer_login():
         mobile = request.form.get("mobile", "").strip()
@@ -82,6 +144,27 @@ def create_app() -> Flask:
             profile=profile,
             accounts=accounts,
         )
+
+    @app.route("/customer/account/<int:account_id>/close", methods=["POST"])
+    def customer_close_account(account_id: int):
+        if session.get("user_type") != "customer":
+            return redirect(url_for("index"))
+
+        customer_id = session.get("customer_id")
+        account = db_helpers.get_account_by_id(account_id)
+
+        if not account or account["customer_id"] != customer_id:
+            flash("Invalid account.", "error")
+            return redirect(url_for("customer_dashboard"))
+
+        # Prevent closing accounts with non-zero balance
+        if account["balance"] != 0:
+            flash("Please transfer or withdraw funds so balance is zero before closing the account.", "warning")
+            return redirect(url_for("customer_dashboard"))
+
+        db_helpers.set_account_status(account_id, "closed")
+        flash("Account closed successfully.", "success")
+        return redirect(url_for("customer_dashboard"))
 
     @app.route("/customer/transactions")
     def customer_transactions():

@@ -9,9 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-import bcrypt
-
-from db import fetch_one, fetch_all
+from db import fetch_one, fetch_all, get_cursor
 
 
 def verify_customer_login(mobile: str, password: str) -> Optional[Dict[str, Any]]:
@@ -28,15 +26,61 @@ def verify_customer_login(mobile: str, password: str) -> Optional[Dict[str, Any]
     if not customer:
         return None
 
-    # For this project/demo, accept a fixed password string ("password")
-    # for all customers instead of verifying the stored hash.
-    if password != "password":
+    stored = customer.get("password_hash")
+
+    # Legacy seeded users: bcrypt hashes starting with "$2a$"
+    # For them, keep the simple fixed password "password".
+    if isinstance(stored, str) and stored.startswith("$2a$"):
+        expected_password = "password"
+    else:
+        # For new signups we store the plain password string in password_hash.
+        # If it's missing for some reason, also fall back to "password".
+        expected_password = stored or "password"
+
+    if password != expected_password:
         return None
 
     # Do not leak the hash further in the app
     customer = dict(customer)
     customer.pop("password_hash", None)
     return customer
+
+
+def get_customer_by_mobile(mobile: str) -> Optional[Dict[str, Any]]:
+    """Fetch a customer by mobile number."""
+    return fetch_one(
+        "SELECT * FROM customers WHERE mobile = %s",
+        (mobile,),
+    )
+
+
+def create_customer(
+    first_name: str,
+    last_name: str,
+    dob: str,
+    email: str,
+    mobile: str,
+    password: str,
+) -> Dict[str, Any]:
+    """
+    Create a new customer. Passwords are stored as plain text (demo only).
+    """
+    password_value = password
+
+    # Use an explicit transaction with commit so the new customer is persisted.
+    # IMPORTANT: the order of VALUES must match the column list.
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            """
+            INSERT INTO customers (first_name, last_name, dob, email, mobile, password_hash)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (first_name, last_name, dob, email, mobile, password_value),
+        )
+        row = cur.fetchone()
+
+    return row
 
 
 def get_customer_profile(customer_id: int) -> Optional[Dict[str, Any]]:
@@ -62,6 +106,7 @@ def get_customer_accounts(customer_id: int) -> List[Dict[str, Any]]:
         FROM accounts a
         JOIN branches b ON a.branch_id = b.branch_id
         WHERE a.customer_id = %s
+          AND a.status = 'active'
         ORDER BY a.opened_at ASC
         """,
         (customer_id,),

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Sign Up - BankBase{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Create a New Customer Account</h2>
+        <p class="card-subtitle">Sign up with your details to access online banking.</p>
+    </div>
+
+    <form method="post" action="{{ url_for('customer_signup') }}" id="signupForm">
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label" for="first_name">First Name</label>
+                <input type="text" id="first_name" name="first_name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="last_name">Last Name</label>
+                <input type="text" id="last_name" name="last_name" class="form-input" required>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label" for="dob">Date of Birth</label>
+                <input type="date" id="dob" name="dob" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="mobile">Mobile Number</label>
+                <input type="text" id="mobile" name="mobile" class="form-input" required pattern="[0-9]{10}" maxlength="10">
+                <div class="form-helper">10-digit mobile, used for login.</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input type="email" id="email" name="email" class="form-input" required>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-input" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="signupBtn">Sign Up</button>
+        <p class="mt-2">
+            Already have an account?
+            <a href="{{ url_for('index') }}">Back to Login</a>
+        </p>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        bankbaseUtils.handleFormSubmit('signupForm', 'signupBtn');
+    });
+</script>
+{% endblock %}
+
