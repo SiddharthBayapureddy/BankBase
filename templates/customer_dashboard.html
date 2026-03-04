@@ -31,9 +31,12 @@
         <div class="card-header">
             <h3 class="card-title">Your Accounts</h3>
             <p class="card-subtitle">Click an account to view statement or transactions.</p>
-            <p class="mt-1">
+            <p class="mt-1 flex gap-1">
                 <a href="{{ url_for('customer_create_account') }}" class="btn btn-primary btn-small">
                     Open New Account
+                </a>
+                <a href="{{ url_for('customer_fds') }}" class="btn btn-secondary btn-small">
+                    View Fixed Deposits
                 </a>
             </p>
         </div>

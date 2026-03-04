@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from decimal import Decimal
 
 from flask import (
     Flask,
@@ -36,6 +37,11 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
+        # Stock landing page
+        return render_template("index.html")
+
+    @app.route("/login")
+    def login_page():
         # Combined customer/employee login page
         return render_template("login.html")
 
@@ -59,6 +65,11 @@ def create_app() -> Flask:
             mobile = request.form.get("mobile", "").strip()
             password = request.form.get("password", "")
             confirm_password = request.form.get("confirm_password", "")
+            
+            # Additional fields for account creation
+            branch_id = int(request.form.get("branch_id"))
+            account_type = request.form.get("account_type", "Savings")
+            initial_deposit = 0.0
 
             if password != confirm_password:
                 flash("Passwords do not match.", "error")
@@ -68,6 +79,7 @@ def create_app() -> Flask:
                 flash("A customer with this mobile already exists.", "error")
                 return redirect(url_for("customer_signup"))
 
+            # Create the customer entry
             customer = customer_core.create_customer(
                 first_name=first_name,
                 last_name=last_name,
@@ -76,14 +88,23 @@ def create_app() -> Flask:
                 mobile=mobile,
                 password=password,
             )
+            
+            # Now also create their initial bank account
+            db_helpers.create_account(
+                customer_id=customer["customer_id"],
+                branch_id=branch_id,
+                account_type=account_type,
+                currency="INR",
+            )
 
             session["user_type"] = "customer"
             session["customer_id"] = customer["customer_id"]
             session["user_name"] = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip() or "Customer"
-            flash("Account created successfully. Welcome!", "success")
+            flash("User account and bank account created successfully. Welcome!", "success")
             return redirect(url_for("customer_dashboard"))
 
-        return render_template("customer_signup.html")
+        branches = db_helpers.get_all_branches()
+        return render_template("customer_signup.html", branches=branches)
 
     @app.route("/customer/account/create", methods=["GET", 'POST'])
     def customer_create_account():
@@ -96,14 +117,13 @@ def create_app() -> Flask:
             branch_id = int(request.form["branch_id"])
             account_type = request.form.get("account_type", "Savings")
             currency = request.form.get("currency", "INR")
-            initial_deposit = float(request.form.get("initial_deposit") or 0)
+            initial_deposit = 0.0
 
             db_helpers.create_account(
                 customer_id=customer_id,
                 branch_id=branch_id,
                 account_type=account_type,
                 currency=currency,
-                initial_deposit=initial_deposit,
             )
             flash("New account created successfully.", "success")
             return redirect(url_for("customer_dashboard"))
@@ -162,6 +182,11 @@ def create_app() -> Flask:
             flash("Please transfer or withdraw funds so balance is zero before closing the account.", "warning")
             return redirect(url_for("customer_dashboard"))
 
+        # Prevent closing accounts with outstanding loans
+        if db_helpers.has_outstanding_loans(account_id):
+            flash("This account is linked to an active or pending loan. Please pay off all loans before closing the account.", "error")
+            return redirect(url_for("customer_dashboard"))
+
         db_helpers.set_account_status(account_id, "closed")
         flash("Account closed successfully.", "success")
         return redirect(url_for("customer_dashboard"))
@@ -171,19 +196,23 @@ def create_app() -> Flask:
         if session.get("user_type") != "customer":
             return redirect(url_for("index"))
 
+        customer_id = session.get("customer_id")
         account_id = request.args.get("account_id", type=int)
         limit = request.args.get("limit", default=50, type=int)
         date_filter = request.args.get("date_filter", default=None)
 
-        if not account_id:
-            flash("Please select an account to view transactions.", "warning")
-            return redirect(url_for("customer_dashboard"))
-
-        transactions = customer_core.get_transaction_history(
-            account_id=account_id,
-            limit=limit,
-            date_filter=date_filter,
-        )
+        if account_id:
+            transactions = customer_core.get_transaction_history(
+                account_id=account_id,
+                limit=limit,
+                date_filter=date_filter,
+            )
+        else:
+            transactions = customer_core.get_all_customer_transactions(
+                customer_id=customer_id,
+                limit=limit,
+                date_filter=date_filter,
+            )
 
         return render_template(
             "transaction_history.html",
@@ -221,13 +250,13 @@ def create_app() -> Flask:
 
         if request.method == "POST":
             from_account = int(request.form["from_account"])
-            to_account = int(request.form["to_account"])
+            to_account_number = request.form["to_account_number"].strip()
             amount = float(request.form["amount"])
             description = request.form.get("description", "Transfer")
 
             success, message = customer_extended.transfer_money(
                 from_account=from_account,
-                to_account=to_account,
+                to_account_number=to_account_number,
                 amount=amount,
                 description=description,
             )
@@ -276,19 +305,28 @@ def create_app() -> Flask:
         flash(message, "success" if success else "error")
         return redirect(url_for("customer_loans"))
 
-    @app.route("/customer/loan/<int:loan_id>")
-    def customer_loan_detail(loan_id: int):
+    @app.route("/customer/fds")
+    def customer_fds():
         if session.get("user_type") != "customer":
             return redirect(url_for("index"))
 
-        loan = db_helpers.get_loan_by_id(loan_id)
-        emi_schedule = customer_extended.get_loan_emi_schedule(loan_id)
+        customer_id = session.get("customer_id")
+        fds = customer_extended.get_customer_fds(customer_id)
 
         return render_template(
-            "loan_emi_details.html",
-            loan=loan,
-            emi_schedule=emi_schedule,
+            "customer_fds.html",
+            fds=fds,
         )
+
+    @app.route("/customer/fds/withdraw/<int:fd_id>", methods=["POST"])
+    def customer_withdraw_fd(fd_id: int):
+        if session.get("user_type") != "customer":
+            return redirect(url_for("index"))
+
+        customer_id = session.get("customer_id")
+        success, message = customer_extended.withdraw_fd(fd_id, customer_id)
+        flash(message, "success" if success else "error")
+        return redirect(url_for("customer_fds"))
 
     @app.route("/customer/cards")
     def customer_cards():
@@ -297,11 +335,25 @@ def create_app() -> Flask:
 
         customer_id = session.get("customer_id")
         cards = customer_extended.get_customer_cards(customer_id)
+        accounts = customer_core.get_customer_accounts(customer_id)
 
         return render_template(
             "cards_list.html",
             cards=cards,
+            accounts=accounts,
         )
+
+    @app.route("/customer/cards/request", methods=["POST"])
+    def customer_request_card():
+        if session.get("user_type") != "customer":
+            return redirect(url_for("index"))
+
+        account_id = int(request.form["account_id"])
+        card_type = request.form["card_type"]
+
+        success, message = customer_extended.request_card(account_id, card_type)
+        flash(message, "success" if success else "error")
+        return redirect(url_for("customer_cards"))
 
     @app.route("/customer/statement")
     def customer_statement():
@@ -417,7 +469,7 @@ def create_app() -> Flask:
             data = {
                 "account_type": request.form["account_type"],
                 "currency": request.form.get("currency", "INR"),
-                "initial_deposit": float(request.form.get("initial_deposit", 0)),
+                "initial_deposit": 0.0,
             }
             account = employee_management.create_new_account(
                 customer_id=customer_id,
@@ -456,9 +508,15 @@ def create_app() -> Flask:
             return redirect(url_for("index"))
 
         employee_id = session.get("employee_id")
-        employee_loans_cards.approve_loan(loan_id, employee_id)
-        flash("Loan approved.", "success")
-        return redirect(url_for("employee_loans"))
+        success = employee_loans_cards.approve_loan(loan_id, employee_id)
+        if success:
+            flash("Loan approved.", "success")
+        else:
+            flash("Failed to approve loan. It might have already been processed.", "error")
+        
+        # Smart redirect: back to dashboard if we came from there
+        next_page = request.referrer or url_for("employee_loans")
+        return redirect(next_page)
 
     @app.route("/employee/loans/reject/<int:loan_id>", methods=["POST"])
     def employee_reject_loan(loan_id: int):
@@ -466,9 +524,14 @@ def create_app() -> Flask:
             return redirect(url_for("index"))
 
         employee_id = session.get("employee_id")
-        employee_loans_cards.reject_loan(loan_id, employee_id)
-        flash("Loan rejected.", "warning")
-        return redirect(url_for("employee_loans"))
+        success = employee_loans_cards.reject_loan(loan_id, employee_id)
+        if success:
+            flash("Loan rejected.", "warning")
+        else:
+            flash("Failed to reject loan. It might have already been processed.", "error")
+            
+        next_page = request.referrer or url_for("employee_loans")
+        return redirect(next_page)
 
     @app.route("/employee/cards/issue", methods=["GET", "POST"])
     def employee_issue_card():
@@ -499,11 +562,32 @@ def create_app() -> Flask:
 
         branch_id = session.get("branch_id")
         cards = employee_loans_cards.get_all_cards(branch_id)
+        requests = employee_loans_cards.get_card_requests(branch_id)
 
         return render_template(
             "cards_list.html",
             cards=cards,
+            card_requests=requests,
         )
+
+    @app.route("/employee/cards/approve/<int:card_id>", methods=["POST"])
+    def employee_approve_card(card_id: int):
+        if session.get("user_type") != "employee":
+            return redirect(url_for("index"))
+
+        action = request.form.get("action", "approve")
+
+        if action == "reject":
+            success = employee_loans_cards.reject_card_request(card_id)
+            flash("Card request rejected." if success else "Failed to reject card.", "warning" if success else "error")
+        else:
+            credit_limit = float(request.form.get("credit_limit", 0))
+            withdrawal_limit = float(request.form.get("withdrawal_limit", 0))
+            success = employee_loans_cards.approve_card_request(card_id, credit_limit, withdrawal_limit)
+            flash("Card request approved." if success else "Failed to approve card.", "success" if success else "error")
+        
+        next_page = request.referrer or url_for("employee_cards")
+        return redirect(next_page)
 
     # -----------------------------
     # REPORTS + HELPERS
@@ -540,6 +624,87 @@ def create_app() -> Flask:
             transactions=transactions,
             filters=filters,
         )
+
+    # -----------------------------
+    # ADMIN ROUTES
+    # -----------------------------
+
+    @app.route("/admin/login", methods=["GET", "POST"])
+    def admin_login():
+        if request.method == "POST":
+            password = request.form.get("password")
+            if password == "password@123":
+                session["is_admin"] = True
+                session["user_type"] = "admin"
+                session["user_name"] = "System Admin"
+                flash("Admin access granted.", "success")
+                return redirect(url_for("admin_dashboard"))
+            else:
+                flash("Invalid admin password.", "error")
+        
+        return render_template("admin_login.html")
+
+    @app.route("/admin/dashboard")
+    def admin_dashboard():
+        if not session.get("is_admin"):
+            flash("Please login as admin to access this page.", "warning")
+            return redirect(url_for("admin_login"))
+        
+        # System wide stats
+        from db import fetch_one, fetch_all
+        stats = fetch_one("""
+            SELECT 
+                (SELECT COUNT(*) FROM customers) as total_customers,
+                (SELECT COUNT(*) FROM accounts) as total_accounts,
+                (SELECT SUM(balance) FROM accounts) as total_balance,
+                (SELECT COUNT(*) FROM transactions) as total_transactions,
+                (SELECT COUNT(*) FROM loans WHERE status = 'ACTIVE') as active_loans,
+                (SELECT SUM(principal_amount) FROM loans WHERE status = 'ACTIVE') as total_loan_principal
+        """)
+
+        all_accounts = fetch_all("""
+            SELECT a.*, c.first_name, c.last_name, b.branch_name 
+            FROM accounts a 
+            JOIN customers c ON a.customer_id = c.customer_id
+            JOIN branches b ON a.branch_id = b.branch_id
+            ORDER BY a.opened_at DESC
+        """)
+
+        recent_transactions = fetch_all("""
+            SELECT t.*, a.account_number 
+            FROM transactions t 
+            JOIN accounts a ON t.account_id = a.account_id 
+            ORDER BY t.created_at DESC 
+            LIMIT 20
+        """)
+
+        return render_template(
+            "admin_dashboard.html",
+            stats=stats,
+            accounts=all_accounts,
+            transactions=recent_transactions
+        )
+
+    @app.route("/admin/deposit", methods=["POST"])
+    def admin_deposit():
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login"))
+
+        account_id = int(request.form["account_id"])
+        amount = Decimal(request.form["amount"])
+        description = request.form.get("description", "Admin Manual Deposit")
+
+        if amount <= 0:
+            flash("Deposit amount must be positive.", "error")
+            return redirect(url_for("admin_dashboard"))
+
+        success = db_helpers.manual_deposit(account_id, amount, description)
+        if success:
+            flash(f"Successfully deposited {amount} INR into account #{account_id}.", "success")
+        else:
+            flash("Failed to perform manual deposit.", "error")
+
+        return redirect(url_for("admin_dashboard"))
 
     return app
 

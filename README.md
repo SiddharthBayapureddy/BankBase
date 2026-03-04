@@ -3,106 +3,160 @@
 
 ---
 
-## Overview
-
-BankBase is a structured PostgreSQL database that models the core operations of a banking system. It covers account management, transactions, loans, fixed deposits, cards, and branch/employee management.
-
----
-
-## Schema
-
-The database consists of the following tables:
-
-- **Branches** — Bank branches with location and IFSC details
-- **Customers** — Customer personal information
-- **Employees** — Branch staff with roles and status
-- **Accounts** — Customer bank accounts (savings, current, etc.) linked to branches
-- **Cards** — Debit/credit cards linked to accounts
-- **Transactions** — All account transactions including transfers via `related_account`
-- **Loans** — Loans linked to accounts and approved by employees
-- **LoanEMI** — EMI schedule and payment tracking for each loan
-- **FD** — Fixed deposits linked to accounts with maturity tracking
-
-![schema](schema.png)
+## 📖 Table of Contents
+- [Project Overview](#-project-overview)
+- [Problem Statement](#-problem-statement)
+- [Key Features](#-key-features)
+- [Database Schema Design](#-database-schema-design)
+- [Constraint Specifications](#-constraint-specifications)
+- [Tech Stack](#-tech-stack)
+- [Getting Started](#-getting-started)
+- [Directory Structure](#-directory-structure)
+- [Development Conventions](#-development-conventions)
 
 ---
 
-## Tech Stack
+## 🏦 Project Overview
+BankBase is a full-stack banking management system designed to handle core banking operations. It provides a robust relational database model and a web-based interface for two primary user groups: **Customers** and **Bank Employees**. 
 
-- **Database:** PostgreSQL
-- **Hosted on:** Supabase (shared team database)
-- **Version Control:** GitHub
-
----
-
-## Getting Started
-
-### Prerequisites
-- [PostgreSQL](https://www.postgresql.org/download/) (v14+)
-- [pgAdmin](https://www.pgadmin.org/) (optional, for GUI)
-
-### Setup
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/bankbase.git
-   cd bankbase
-   ```
-
-2. Create the database:
-   ```bash
-   psql -U postgres -c "CREATE DATABASE bankbase;"
-   ```
-
-3. Run the DDL script to create all tables:
-   ```bash
-   psql -U postgres -d bankbase -f scripts/schema.sql
-   ```
-
-4. Seed the database with sample data:
-   ```bash
-   psql -U postgres -d bankbase -f scripts/seed.sql
-   ```
+The project focuses on data integrity, transaction consistency, and administrative oversight, simulating real-world banking workflows such as account management, money transfers, loan processing, and financial reporting.
 
 ---
 
-## Project Structure
+## 🎯 Problem Statement
+Traditional banking systems require high availability, strict data consistency (ACID properties), and complex relationship management between entities like customers, accounts, branches, and transactions. 
 
+The goal of BankBase is to build a scalable and secure relational database schema that:
+1. Prevents data redundancy using normalization.
+2. Ensures financial integrity through database-level constraints.
+3. Provides a user-friendly interface for non-technical users to interact with complex SQL-driven logic.
+4. Implements role-based access control (RBAC) for customers and staff.
+
+---
+
+## ✨ Key Features
+
+### 👤 Customer Portal
+- **Dashboard:** Overview of account balances, recent transactions, and active loans.
+- **Account Management:** Open new savings or current accounts.
+- **Money Transfer:** Secure peer-to-peer transfers between accounts within the bank.
+- **Transaction History:** Detailed logs of all credits and debits with balance tracking.
+- **Loans & FDs:** Apply for loans, view EMI schedules, and manage fixed deposits.
+- **Card Management:** View linked debit/credit cards and their statuses.
+
+### 💼 Employee Portal
+- **Administrative Dashboard:** Monitor branch-level activities and customer metrics.
+- **Customer Management:** Search and view detailed customer profiles and account mappings.
+- **Loan Approval Workflow:** Review pending loan applications and approve/reject based on criteria.
+- **Card Issuance:** Issue new cards to customer accounts.
+- **Reporting:** Generate branch-specific transaction reports and financial summaries.
+
+---
+
+## 📊 Database Schema Design
+The system utilizes a PostgreSQL relational model with the following core entities:
+
+- **Branches:** Stores branch locations and unique IFSC codes.
+- **Customers:** Personal details and authentication data for bank users.
+- **Employees:** Staff records linked to specific branches with designated roles.
+- **Accounts:** The central entity linking customers to branches, storing balances and account types (Savings, Current).
+- **Transactions:** Immutable logs of every financial movement, including transfers via `related_account` references.
+- **Cards:** Linked to specific accounts with unique card numbers and CVVs.
+- **Loans:** Records principal, interest, tenure, and approval status.
+- **Loan EMI:** Tracks individual monthly installments for each loan.
+- **Fixed Deposits (FD):** Tracks principal, interest, and maturity dates for long-term savings.
+
+![Schema Diagram](schema.png)
+
+---
+
+## 🛡️ Constraint Specifications
+Data integrity is enforced at the database level using:
+
+- **Primary Keys:** Unique identifiers for every record (e.g., `account_id`, `customer_id`).
+- **Foreign Keys:** Enforces referential integrity (e.g., `account_id` in `transactions` must exist in `accounts`).
+- **Unique Constraints:** Ensures `account_number`, `loan_number`, and `card_number` are never duplicated.
+- **Check Constraints:**
+  - `amount > 0` for transactions.
+  - `balance >= 0` for accounts.
+  - `loan_type` restricted to ('Personal', 'Home', 'Auto', etc.).
+  - `status` restricted to ('PENDING', 'APPROVED', 'ACTIVE', etc.).
+- **Defaults:** `status` defaults to 'active' or 'pending', `created_at` defaults to `CURRENT_TIMESTAMP`.
+
+---
+
+## 💻 Tech Stack
+- **Web Framework:** Flask (Python 3.8+)
+- **Database:** PostgreSQL (v14+)
+- **Database Driver:** `psycopg2-binary`
+- **Environment Management:** `python-dotenv`
+- **Frontend:** HTML5 (Jinja2 Templates), CSS3 (Vanilla), JavaScript
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- Python installed.
+- PostgreSQL instance (Local or Supabase).
+
+### 2. Installation
+```bash
+# Clone the repository
+git clone <repository-url>
+cd BankBase
+
+# Set up virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
-bankbase/
-├── schema/
-│   ├── accounts.sql       
-│   ├── branches.sql         
-│   └── customers.sql      
-├── seed/
-│   └── seed.sql # Seeding with sample data
-├── banking_er.xml # Schema (draw.io format)
-├── schema.png  # Schema of the database 
-└── README.md
+
+### 3. Environment Setup
+Create a `.env` file in the root:
+```env
+DATABASE_URL=postgresql://postgres:[password]@[host]:5432/bankbase
+SECRET_KEY=your-secret-key-here
 ```
 
----
+### 4. Database Initialization
+Execute the SQL scripts in the `schema/` directory followed by `seed/`:
+```bash
+# Example using psql
+psql -d bankbase -f schema/branches.sql
+psql -d bankbase -f schema/customers.sql
+# ... (repeat for all schema files)
+psql -d bankbase -f seed/seed.sql
+```
 
-## Team Collaboration
-
-This project uses **Supabase** as a shared hosted PostgreSQL instance. To connect:
-
-1. Get the connection string from your team lead
-2. Use it in pgAdmin or psql:
-   ```
-   postgresql://postgres:[password]@[host]:5432/bankbase
-   ```
-
-All schema changes must be committed to GitHub as `.sql` scripts before applying to the shared database.
-
----
-
-## Contributors
-
-- Teammate 1
-- Teammate 2
+### 5. Running the App
+```bash
+python app.py
+```
+Visit `http://127.0.0.1:5000` in your browser.
 
 ---
 
-## License
-This project is for educational purposes only.
+## 📁 Directory Structure
+- `app.py`: Main Flask application entry point.
+- `db.py`: Database connection pool and utility functions.
+- `functions/`: Core business logic (Customer, Employee, Reports).
+- `queries/`: SQL query references for all operations.
+- `schema/`: DDL scripts for table creation.
+- `seed/`: Sample data for testing.
+- `templates/`: HTML views.
+- `static/`: Frontend assets (CSS/JS).
+
+---
+
+## 🛠️ Development Conventions
+- **Logic Separation:** Keep route handlers in `app.py` thin; place complex logic in `functions/`.
+- **Database Access:** Always use helper functions in `db.py` to manage connections.
+- **Query Management:** Maintain SQL queries in the `queries/` directory for better maintainability.
+
+---
+
+## 📄 License
+This project is developed for educational purposes as part of a DBMS course.

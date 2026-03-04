@@ -7,6 +7,7 @@ customer-facing data fetches.
 
 from __future__ import annotations
 
+import bcrypt
 from typing import Any, Dict, List, Optional, Tuple
 
 from db import fetch_one, fetch_all, get_cursor
@@ -14,10 +15,9 @@ from db import fetch_one, fetch_all, get_cursor
 
 def verify_customer_login(mobile: str, password: str) -> Optional[Dict[str, Any]]:
     """
-    (1) Verify customer login with mobile + password.
-
-    Returns the customer row (without password_hash) on success,
-    or None on failure.
+    (1) Verify customer login.
+    For customer_id <= 12, allow plain text comparison.
+    For others, use bcrypt hashing.
     """
     customer = fetch_one(
         "SELECT * FROM customers WHERE mobile = %s",
@@ -27,23 +27,36 @@ def verify_customer_login(mobile: str, password: str) -> Optional[Dict[str, Any]
         return None
 
     stored = customer.get("password_hash")
-
-    # Legacy seeded users: bcrypt hashes starting with "$2a$"
-    # For them, keep the simple fixed password "password".
-    if isinstance(stored, str) and stored.startswith("$2a$"):
-        expected_password = "password"
-    else:
-        # For new signups we store the plain password string in password_hash.
-        # If it's missing for some reason, also fall back to "password".
-        expected_password = stored or "password"
-
-    if password != expected_password:
+    if not stored:
         return None
 
-    # Do not leak the hash further in the app
-    customer = dict(customer)
-    customer.pop("password_hash", None)
-    return customer
+    customer_id = customer["customer_id"]
+    
+    # Per user request: let the customer_id <= 12 do fine with plain passwords
+    if customer_id <= 12:
+        # Check plain text first
+        if password == stored:
+            success = True
+        else:
+            # Also try bcrypt just in case it was already hashed
+            try:
+                success = bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8'))
+            except Exception:
+                success = False
+    else:
+        # For new/other customers, strictly use bcrypt
+        try:
+            success = bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8'))
+        except Exception:
+            success = False
+
+    if success:
+        # Do not leak the hash further in the app
+        customer_data = dict(customer)
+        customer_data.pop("password_hash", None)
+        return customer_data
+
+    return None
 
 
 def get_customer_by_mobile(mobile: str) -> Optional[Dict[str, Any]]:
@@ -63,12 +76,12 @@ def create_customer(
     password: str,
 ) -> Dict[str, Any]:
     """
-    Create a new customer. Passwords are stored as plain text (demo only).
+    Create a new customer with a hashed password.
     """
-    password_value = password
+    # Hash the password
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     # Use an explicit transaction with commit so the new customer is persisted.
-    # IMPORTANT: the order of VALUES must match the column list.
     with get_cursor(commit=True) as cur:
         cur.execute(
             """
@@ -76,7 +89,7 @@ def create_customer(
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING *
             """,
-            (first_name, last_name, dob, email, mobile, password_value),
+            (first_name, last_name, dob, email, mobile, hashed_password),
         )
         row = cur.fetchone()
 
@@ -120,10 +133,6 @@ def get_transaction_history(
 ) -> List[Dict[str, Any]]:
     """
     (4) Get transaction history for an account.
-
-    - `limit` controls how many rows to fetch (most recent first)
-    - If `date_filter` is provided (YYYY-MM-DD), only rows with
-      created_at::date >= date_filter are returned.
     """
     params: list[Any] = [account_id]
     where_clauses = ["t.account_id = %s"]
@@ -141,9 +150,52 @@ def get_transaction_history(
             t.amount,
             t.balance_after,
             t.related_account,
+            a_rel.account_number as related_account_number,
+            a_own.account_number as own_account_number,
             t.created_at,
             t.description
         FROM transactions t
+        JOIN accounts a_own ON t.account_id = a_own.account_id
+        LEFT JOIN accounts a_rel ON t.related_account = a_rel.account_id
+        WHERE {" AND ".join(where_clauses)}
+        ORDER BY t.created_at DESC, t.tx_id DESC
+        LIMIT %s
+    """
+
+    return fetch_all(sql, tuple(params))
+
+
+def get_all_customer_transactions(
+    customer_id: int,
+    limit: int = 50,
+    date_filter: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Fetch transactions for all accounts belonging to a customer.
+    """
+    params: list[Any] = [customer_id]
+    where_clauses = ["a_own.customer_id = %s"]
+
+    if date_filter:
+        where_clauses.append("t.created_at::date >= %s")
+        params.append(date_filter)
+
+    params.append(limit)
+
+    sql = f"""
+        SELECT
+            t.tx_id,
+            t.tx_type,
+            t.amount,
+            t.balance_after,
+            t.related_account,
+            a_rel.account_number as related_account_number,
+            a_own.account_number as own_account_number,
+            t.created_at,
+            t.description
+        FROM transactions t
+        JOIN accounts a_own ON t.account_id = a_own.account_id
+        LEFT JOIN accounts a_rel ON t.related_account = a_rel.account_id
         WHERE {" AND ".join(where_clauses)}
         ORDER BY t.created_at DESC, t.tx_id DESC
         LIMIT %s

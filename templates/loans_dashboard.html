@@ -82,9 +82,13 @@
                         </span>
                     </td>
                     <td class="text-right">
-                        <a href="{{ url_for('customer_loan_detail', loan_id=loan.loan_id) }}" class="btn btn-secondary btn-small">
-                            EMI Schedule
-                        </a>
+                        {% if loan.status == 'ACTIVE' %}
+                            <span class="text-success small">Active</span>
+                        {% elif loan.status == 'PENDING' %}
+                            <span class="text-warning small">Awaiting Approval</span>
+                        {% else %}
+                            <span class="text-muted small">{{ loan.status }}</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

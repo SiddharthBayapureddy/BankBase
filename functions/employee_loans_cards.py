@@ -61,19 +61,20 @@ def get_all_loans(branch_id: int, status_filter: Optional[str] = None) -> List[D
     return fetch_all(sql, tuple(params))
 
 
-def approve_loan(loan_id: int, employee_id: int) -> None:
+def approve_loan(loan_id: int, employee_id: int) -> bool:
     """
     (18) Approve a loan and disburse funds to the linked account.
+    Returns True if successful, False otherwise.
     """
     with get_cursor(commit=True) as cur:
-        # Lock the loan row
+        # Lock and check loan status
         cur.execute(
             "SELECT * FROM loans WHERE loan_id = %s FOR UPDATE",
             (loan_id,),
         )
         loan = cur.fetchone()
-        if not loan:
-            return
+        if not loan or loan["status"] != 'PENDING':
+            return False
 
         # Lock the linked account
         account_id = loan["linked_account_id"]
@@ -83,7 +84,7 @@ def approve_loan(loan_id: int, employee_id: int) -> None:
         )
         account = cur.fetchone()
         if not account:
-            return
+            return False
 
         current_balance = account["balance"]
         principal = loan["principal_amount"]
@@ -123,21 +124,30 @@ def approve_loan(loan_id: int, employee_id: int) -> None:
             """,
             (employee_id, loan_id),
         )
+        
+        return True
 
 
-def reject_loan(loan_id: int, employee_id: int) -> None:
+def reject_loan(loan_id: int, employee_id: int) -> bool:
     """
     (19) Reject a loan.
     """
-    execute(
-        """
-        UPDATE loans
-        SET status = 'REJECTED',
-            employee_id = %s
-        WHERE loan_id = %s
-        """,
-        (employee_id, loan_id),
-    )
+    with get_cursor(commit=True) as cur:
+        cur.execute("SELECT status FROM loans WHERE loan_id = %s FOR UPDATE", (loan_id,))
+        loan = cur.fetchone()
+        if not loan or loan["status"] != 'PENDING':
+            return False
+
+        cur.execute(
+            """
+            UPDATE loans
+            SET status = 'REJECTED',
+                employee_id = %s
+            WHERE loan_id = %s
+            """,
+            (employee_id, loan_id),
+        )
+        return True
 
 
 def _generate_card_number() -> str:
@@ -206,4 +216,74 @@ def get_all_cards(branch_id: int) -> List[Dict[str, Any]]:
         """,
         (branch_id,),
     )
+
+
+def get_card_requests(branch_id: int) -> List[Dict[str, Any]]:
+    """
+    Find all card requests (withdrawal_limit = -1) for a branch.
+    """
+    return fetch_all(
+        """
+        SELECT
+            c.*,
+            a.account_number,
+            cu.first_name,
+            cu.last_name
+        FROM cards c
+        JOIN accounts a ON c.account_id = a.account_id
+        JOIN customers cu ON a.customer_id = cu.customer_id
+        WHERE a.branch_id = %s AND c.withdrawal_limit = -1
+        ORDER BY c.issued_date ASC
+        """,
+        (branch_id,),
+    )
+
+
+def approve_card_request(
+    card_id: int,
+    credit_limit: float,
+    withdrawal_limit: float,
+) -> bool:
+    """
+    Approve a card request: generate real number/cvv, set limits, set status to Active.
+    """
+    with get_cursor(commit=True) as cur:
+        # Check if it's still a pending request
+        cur.execute("SELECT withdrawal_limit FROM cards WHERE card_id = %s FOR UPDATE", (card_id,))
+        card = cur.fetchone()
+        if not card or card["withdrawal_limit"] != -1:
+            return False
+
+        card_number = _generate_card_number()
+        cvv = _generate_cvv()
+        expiry = date.today().replace(year=date.today().year + 4)
+
+        cur.execute(
+            """
+            UPDATE cards
+            SET card_number = %s,
+                cvv = %s,
+                expiry_date = %s,
+                status = 'Active',
+                credit_limit = %s,
+                withdrawal_limit = %s
+            WHERE card_id = %s
+            """,
+            (card_number, cvv, expiry, credit_limit, withdrawal_limit, card_id)
+        )
+        return True
+
+
+def reject_card_request(card_id: int) -> bool:
+    """
+    Reject a card request by deleting the temporary record.
+    """
+    with get_cursor(commit=True) as cur:
+        cur.execute("SELECT withdrawal_limit FROM cards WHERE card_id = %s FOR UPDATE", (card_id,))
+        card = cur.fetchone()
+        if not card or card["withdrawal_limit"] != -1:
+            return False
+
+        cur.execute("DELETE FROM cards WHERE card_id = %s", (card_id,))
+        return True
 

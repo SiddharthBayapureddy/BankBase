@@ -29,24 +29,40 @@
         <table class="table" id="txTable">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Date</th>
                     <th>Type</th>
                     <th class="text-right">Amount</th>
                     <th class="text-right">Balance After</th>
-                    <th>Related Account</th>
+                    <th>Sender Account</th>
+                    <th>Receiver Account</th>
                     <th>Description</th>
                 </tr>
             </thead>
             <tbody>
                 {% for tx in transactions %}
                 <tr>
-                    <td>{{ tx.tx_id }}</td>
                     <td>{{ tx.created_at }}</td>
-                    <td>{{ tx.tx_type }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if tx.tx_type in ['CREDIT', 'DEPOSIT', 'TRANSFER_IN'] else 'badge-warning' }}">
+                            {{ tx.tx_type }}
+                        </span>
+                    </td>
                     <td class="text-right money">{{ tx.amount }}</td>
                     <td class="text-right money">{{ tx.balance_after }}</td>
-                    <td>{{ tx.related_account }}</td>
+                    <td>
+                        {% if tx.tx_type in ['DEBIT', 'TRANSFER_OUT'] %}
+                            <strong>{{ tx.own_account_number }}</strong>
+                        {% else %}
+                            {{ tx.related_account_number or '-' }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if tx.tx_type in ['CREDIT', 'DEPOSIT', 'TRANSFER_IN'] %}
+                            <strong>{{ tx.own_account_number }}</strong>
+                        {% else %}
+                            {{ tx.related_account_number or '-' }}
+                        {% endif %}
+                    </td>
                     <td>{{ tx.description }}</td>
                 </tr>
                 {% endfor %}

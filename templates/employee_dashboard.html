@@ -63,5 +63,85 @@
         {% endif %}
     </div>
 </div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h3 class="card-title">Pending Loan Approvals</h3>
+    </div>
+    {% if summary.pending_loans %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Loan #</th>
+                    <th>Customer</th>
+                    <th class="text-right">Amount</th>
+                    <th>Type</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in summary.pending_loans %}
+                <tr>
+                    <td>{{ l.loan_number }}</td>
+                    <td>{{ l.first_name }} {{ l.last_name }}</td>
+                    <td class="text-right money">{{ l.principal_amount }}</td>
+                    <td>{{ l.loan_type }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('employee_approve_loan', loan_id=l.loan_id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-success btn-small">Approve</button>
+                        </form>
+                        <form method="post" action="{{ url_for('employee_reject_loan', loan_id=l.loan_id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-small">Reject</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No pending loans.</p>
+    {% endif %}
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h3 class="card-title">Pending Card Requests</h3>
+    </div>
+    {% if summary.pending_cards %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Account</th>
+                    <th>Type</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in summary.pending_cards %}
+                <tr>
+                    <td>{{ req.first_name }} {{ req.last_name }}</td>
+                    <td>{{ req.account_number }}</td>
+                    <td>{{ req.card_type }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('employee_approve_card', card_id=req.card_id) }}" class="flex items-center gap-1">
+                            <input type="number" name="credit_limit" class="form-input form-input-sm" style="width: 80px;" value="50000" placeholder="Credit">
+                            <input type="number" name="withdrawal_limit" class="form-input form-input-sm" style="width: 80px;" value="20000" placeholder="Withdrawal">
+                            <button type="submit" name="action" value="approve" class="btn btn-primary btn-sm">Approve</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No pending card requests.</p>
+    {% endif %}
+</div>
 {% endblock %}
 

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}My Fixed Deposits - BankBase{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Your Fixed Deposits</h2>
+        <p class="card-subtitle">Manage your long-term savings.</p>
+    </div>
+
+    {% if fds %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>FD Number</th>
+                    <th>Linked Account</th>
+                    <th class="text-right">Principal</th>
+                    <th>Rate</th>
+                    <th>Maturity Date</th>
+                    <th class="text-right">Maturity Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fd in fds %}
+                <tr>
+                    <td>{{ fd.fd_number }}</td>
+                    <td>{{ fd.linked_account_number }}</td>
+                    <td class="text-right money">{{ fd.principal_amount }}</td>
+                    <td>{{ fd.interest_rate }}%</td>
+                    <td>{{ fd.maturity_date }}</td>
+                    <td class="text-right money">{{ fd.maturity_amount }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if fd.status == 'ACTIVE' else 'badge-secondary' }}">
+                            {{ fd.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if fd.status == 'ACTIVE' %}
+                        <form method="post" action="{{ url_for('customer_withdraw_fd', fd_id=fd.fd_id) }}" onsubmit="return confirm('Are you sure you want to withdraw this FD? Premature withdrawal may result in loss of interest.')">
+                            <button type="submit" class="btn btn-danger btn-small">
+                                Withdraw
+                            </button>
+                        </form>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No fixed deposits found.</p>
+    {% endif %}
+    
+    <div class="mt-2">
+        <a href="{{ url_for('customer_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

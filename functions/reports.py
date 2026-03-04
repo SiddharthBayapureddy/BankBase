@@ -90,6 +90,7 @@ def get_employee_dashboard_summary(employee_id: int, branch_id: int) -> Dict[str
     """
     Convenience summary for the employee dashboard.
     """
+    from . import employee_loans_cards
     branch_report = get_branch_report(branch_id)
 
     my_loan_actions = fetch_one(
@@ -116,10 +117,16 @@ def get_employee_dashboard_summary(employee_id: int, branch_id: int) -> Dict[str
         (branch_id,),
     )
 
+    # Fetch pending items for the dashboard
+    pending_loans = employee_loans_cards.get_pending_loans(branch_id)
+    pending_cards = employee_loans_cards.get_card_requests(branch_id)
+
     return {
         "branch": branch_report.get("branch"),
         "totals": branch_report,
         "my_loan_actions": my_loan_actions or {"approved": 0, "rejected": 0},
         "recent_customers": recent_customers,
+        "pending_loans": pending_loans,
+        "pending_cards": pending_cards,
     }
 

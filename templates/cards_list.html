@@ -9,6 +9,80 @@
         <p class="card-subtitle">All cards linked to your accounts{% if session.get('user_type') == 'employee' %} / branch{% endif %}.</p>
     </div>
 
+    {% if session.get('user_type') == 'employee' and card_requests %}
+    <div class="mt-2">
+        <h3 class="card-title">Pending Card Requests</h3>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Account</th>
+                        <th>Type</th>
+                        <th>Credit Limit</th>
+                        <th>Withdrawal Limit</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in card_requests %}
+                    <tr>
+                        <td>{{ req.first_name }} {{ req.last_name }}</td>
+                        <td>{{ req.account_number }}</td>
+                        <td>{{ req.card_type }}</td>
+                        <td colspan="3">
+                            <form method="post" action="{{ url_for('employee_approve_card', card_id=req.card_id) }}" class="flex items-center gap-1">
+                                <div class="flex gap-1 items-center">
+                                    <label class="small text-muted">Limit:</label>
+                                    <input type="number" name="credit_limit" class="form-input form-input-sm" style="width: 100px;" value="50000" placeholder="Credit">
+                                    <input type="number" name="withdrawal_limit" class="form-input form-input-sm" style="width: 100px;" value="20000" placeholder="Withdrawal">
+                                </div>
+                                <div class="flex gap-1">
+                                    <button type="submit" name="action" value="approve" class="btn btn-primary btn-sm">Approve</button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if session.get('user_type') == 'customer' %}
+    <div class="mb-3 p-2" style="background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <h3 class="card-title">Request New Card</h3>
+        <p class="text-muted small">Apply for a Debit or Credit card for your accounts.</p>
+        
+        <form method="post" action="{{ url_for('customer_request_card') }}" class="grid grid-3 gap-1 mt-1">
+            <div class="form-group">
+                <label class="form-label" for="account_id">Select Account</label>
+                <select name="account_id" id="account_id" class="form-select" required>
+                    <option value="">-- Choose Account --</option>
+                    {% for acc in accounts %}
+                    <option value="{{ acc.account_id }}">
+                        {{ acc.account_number }} ({{ acc.account_type }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="card_type">Card Type</label>
+                <select name="card_type" id="card_type" class="form-select" required>
+                    <option value="Debit">Debit Card</option>
+                    <option value="Credit">Credit Card</option>
+                </select>
+            </div>
+            <div class="form-group" style="align-self: end;">
+                <button type="submit" class="btn btn-primary btn-block">Apply for Card</button>
+            </div>
+        </form>
+    </div>
+    <hr class="mb-3">
+    {% endif %}
+
     {% if cards %}
     <div class="table-container">
         <table class="table">
@@ -27,17 +101,29 @@
                 {% for c in cards %}
                 <tr>
                     <td>
-                        <span class="text-mono">{{ c.card_number }}</span>
+                        <span class="text-mono">
+                            {% if c.withdrawal_limit == -1 %}
+                                <span class="text-muted">PENDING...</span>
+                            {% else %}
+                                {{ c.card_number }}
+                            {% endif %}
+                        </span>
                     </td>
                     <td>{{ c.card_type }}</td>
                     <td>{{ c.account_number or c.account_id }}</td>
-                    <td>{{ c.status }}</td>
-                    <td>{{ c.expiry_date }}</td>
+                    <td>
+                        {% if c.withdrawal_limit == -1 %}
+                            <span class="badge badge-warning">Pending Approval</span>
+                        {% else %}
+                            <span class="badge {{ 'badge-success' if c.status == 'Active' else 'badge-danger' }}">{{ c.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ c.expiry_date if c.withdrawal_limit != -1 else '-' }}</td>
                     <td class="text-right money">
-                        {% if c.credit_limit %}{{ c.credit_limit }}{% else %}-{% endif %}
+                        {% if c.withdrawal_limit == -1 %}-{% elif c.credit_limit %}{{ c.credit_limit }}{% else %}-{% endif %}
                     </td>
                     <td class="text-right money">
-                        {% if c.withdrawal_limit %}{{ c.withdrawal_limit }}{% else %}-{% endif %}
+                        {% if c.withdrawal_limit == -1 %}-{% elif c.withdrawal_limit %}{{ c.withdrawal_limit }}{% else %}-{% endif %}
                     </td>
                 </tr>
                 {% endfor %}

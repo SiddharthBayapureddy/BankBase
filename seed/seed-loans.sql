@@ -14,4 +14,7 @@ VALUES
 (4, 1, 4, 'LN0000000014', 'Education', 1500000.00, 9.50, 120, 19409.00, 0.00, '2018-08-01', 'CLOSED'),
 
 -- 5. Vikram Singh: Pending Auto Loan (Approved but not yet disbursed)
-(5, 2, 5, 'LN0000000015', 'Auto', 800000.00, 9.00, 60, 16606.00, 800000.00, NULL, 'PENDING');
+(5, 2, 5, 'LN0000000015', 'Auto', 800000.00, 9.00, 60, 16606.00, 800000.00, NULL, 'PENDING'),
+
+-- 6. Rahul Sharma: New Pending Personal Loan for Branch 1
+(1, 1, 1, 'LN0000000016', 'Personal', 50000.00, 12.00, 12, 4442.00, 50000.00, NULL, 'PENDING');

@@ -12,28 +12,26 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
-from db import get_cursor, fetch_all, fetch_one
+from db import get_cursor, fetch_all, fetch_one, execute
 from . import db_helpers
 
 
 def transfer_money(
     from_account: int,
-    to_account: int,
+    to_account_number: str,
     amount: float,
     description: str = "Transfer",
 ) -> Tuple[bool, str]:
     """
-    (6) Transfer money between two accounts.
+    (6) Transfer money from a source account ID to a destination account number.
 
     Performs basic validations and a single DB transaction that:
+    - resolves to_account_number to to_account_id
     - locks both accounts
     - checks sufficient balance
     - updates balances
     - inserts two transaction rows (debit and credit)
     """
-    if from_account == to_account:
-        return False, "Source and destination accounts must be different."
-
     amt = Decimal(str(amount))
     if amt <= 0:
         return False, "Amount must be positive."
@@ -42,6 +40,17 @@ def transfer_money(
         return False, "Insufficient balance."
 
     with get_cursor(commit=True) as cur:
+        # Resolve destination account number
+        cur.execute("SELECT account_id FROM accounts WHERE account_number = %s", (to_account_number,))
+        to_row = cur.fetchone()
+        if not to_row:
+            return False, f"Destination account '{to_account_number}' not found."
+        
+        to_account = to_row["account_id"]
+
+        if from_account == to_account:
+            return False, "Source and destination accounts must be different."
+
         # Lock both accounts in a deterministic order to avoid deadlocks
         acc_ids = sorted([from_account, to_account])
         cur.execute(
@@ -56,7 +65,7 @@ def transfer_money(
         rows = {row["account_id"]: row for row in cur.fetchall()}
 
         if from_account not in rows or to_account not in rows:
-            raise ValueError("One or both accounts not found.")
+            raise ValueError("One or both accounts not found after lock.")
 
         from_balance = rows[from_account]["balance"]
         to_balance = rows[to_account]["balance"]
@@ -118,21 +127,6 @@ def get_customer_loans(customer_id: int) -> List[Dict[str, Any]]:
     )
 
 
-def get_loan_emi_schedule(loan_id: int) -> List[Dict[str, Any]]:
-    """
-    (8) Get EMI schedule rows for a given loan.
-    """
-    return fetch_all(
-        """
-        SELECT *
-        FROM loan_emi
-        WHERE loan_id = %s
-        ORDER BY emi_number ASC
-        """,
-        (loan_id,),
-    )
-
-
 def get_customer_cards(customer_id: int) -> List[Dict[str, Any]]:
     """
     (9) Fetch all cards linked to a customer's accounts.
@@ -153,16 +147,53 @@ def get_customer_cards(customer_id: int) -> List[Dict[str, Any]]:
     )
 
 
+def request_card(account_id: int, card_type: str) -> Tuple[bool, str]:
+    """
+    Submit a card request by creating a 'Blocked' card with a temporary number.
+    Uses withdrawal_limit = -1 as a flag for 'PENDING APPROVAL'.
+    """
+    import time
+    from datetime import date
+    
+    # Check if a request already exists for this account and type
+    existing = fetch_one(
+        "SELECT 1 FROM cards WHERE account_id = %s AND card_type = %s AND withdrawal_limit = -1",
+        (account_id, card_type)
+    )
+    if existing:
+        return False, f"A {card_type} card request is already pending for this account."
+
+    # Temporary card number: REQ + timestamp
+    temp_card_number = f"REQ{int(time.time())}"[:16]
+    cvv = "000"
+    expiry = date.today()
+
+    try:
+        execute(
+            """
+            INSERT INTO cards (
+                account_id, card_number, card_type, 
+                expiry_date, cvv, status, 
+                credit_limit, withdrawal_limit
+            ) VALUES (%s, %s, %s, %s, %s, 'Blocked', 0, -1)
+            """,
+            (account_id, temp_card_number, card_type, expiry, cvv)
+        )
+        return True, f"Request for {card_type} card submitted successfully."
+    except Exception as e:
+        return False, f"Failed to submit request: {str(e)}"
+
+
 def _calculate_emi(principal: Decimal, annual_rate: float, tenure_months: int) -> Decimal:
     """Simple EMI calculation helper."""
     if tenure_months <= 0:
-        return Decimal("0.00")
+        return Decimal("0.01") # Minimal value to satisfy constraints if tenure is somehow 0
 
     monthly_rate = Decimal(str(annual_rate)) / Decimal("1200")
     if monthly_rate == 0:
         return (principal / tenure_months).quantize(Decimal("0.01"))
 
-    # Use float math for simplicity, then convert back to Decimal
+    # Use float math for simplicity
     p = float(principal)
     r = float(monthly_rate)
     n = tenure_months
@@ -202,6 +233,8 @@ def request_loan(
         "Business": 11.0,
     }
     interest_rate = rate_by_type.get(loan_type, 10.0)
+    
+    # Calculate EMI to satisfy database constraint CHECK (emi_amount > 0)
     emi_amount = _calculate_emi(principal, interest_rate, tenure_months)
 
     # Generate a simple unique-ish loan_number based on next ID
@@ -248,6 +281,68 @@ def request_loan(
         return False, "Could not create loan request."
 
     return True, "Loan request submitted successfully."
+
+def get_customer_fds(customer_id: int) -> List[Dict[str, Any]]:
+    """
+    Fetch all fixed deposits belonging to a customer.
+    """
+    return fetch_all(
+        """
+        SELECT fd.*, a.account_number as linked_account_number
+        FROM fixed_deposits fd
+        JOIN accounts a ON fd.linked_account_id = a.account_id
+        WHERE fd.customer_id = %s
+        ORDER BY fd.start_date DESC
+        """,
+        (customer_id,),
+    )
+
+def withdraw_fd(fd_id: int, customer_id: int) -> Tuple[bool, str]:
+    """
+    Withdraw/Close a fixed deposit and transfer funds to the linked account.
+    """
+    with get_cursor(commit=True) as cur:
+        # Lock FD row
+        cur.execute("SELECT * FROM fixed_deposits WHERE fd_id = %s AND customer_id = %s FOR UPDATE", (fd_id, customer_id))
+        fd = cur.fetchone()
+        if not fd:
+            return False, "Fixed Deposit not found."
+        
+        if fd["status"] != "ACTIVE":
+            return False, f"Fixed Deposit is already {fd['status']}."
+
+        linked_account_id = fd["linked_account_id"]
+        # Determine if it's a regular maturity or premature closure
+        is_matured = date.today() >= fd["maturity_date"]
+        amount_to_transfer = fd["maturity_amount"] if is_matured else fd["principal_amount"]
+        new_status = "MATURED" if is_matured else "PREMATURELY_CLOSED"
+
+        # Lock Linked Account
+        cur.execute("SELECT balance FROM accounts WHERE account_id = %s FOR UPDATE", (linked_account_id,))
+        account = cur.fetchone()
+        if not account:
+            return False, "Linked account not found."
+
+        new_balance = account["balance"] + amount_to_transfer
+
+        # 1. Update account balance
+        cur.execute("UPDATE accounts SET balance = %s WHERE account_id = %s", (new_balance, linked_account_id))
+
+        # 2. Update FD status
+        cur.execute("UPDATE fixed_deposits SET status = %s WHERE fd_id = %s", (new_status, fd_id))
+
+        # 3. Insert Transaction
+        description = f"FD Withdrawal: {fd['fd_number']} ({new_status})"
+        cur.execute(
+            """
+            INSERT INTO transactions (
+                account_id, tx_type, amount, balance_after, description
+            ) VALUES (%s, %s, %s, %s, %s)
+            """,
+            (linked_account_id, "CREDIT", amount_to_transfer, new_balance, description)
+        )
+
+    return True, f"Fixed Deposit withdrawn successfully. {amount_to_transfer} INR credited to {account['account_number']}."
 
 def generate_account_statement(
     account_id: int,

@@ -13,9 +13,8 @@ from db import fetch_one, fetch_all, execute
 
 def verify_employee_login(employee_id: str, password: str) -> Optional[Dict[str, Any]]:
     """
-    (11) Verify employee login.
-
-    `employee_id` comes from the login form and is cast to INT.
+    (11) Verify employee login. 
+    Accepts 'password' as the password for all employees.
     """
     try:
         emp_id_int = int(employee_id)
@@ -29,14 +28,13 @@ def verify_employee_login(employee_id: str, password: str) -> Optional[Dict[str,
     if not employee:
         return None
 
-    # For this project/demo, accept a fixed password string ("password")
-    # for all employees instead of verifying the stored hash.
+    # Per user request: let the password 'password' login for employees
     if password != "password":
         return None
 
-    employee = dict(employee)
-    employee.pop("password_hash", None)
-    return employee
+    employee_data = dict(employee)
+    employee_data.pop("password_hash", None)
+    return employee_data
 
 
 def search_customers(query: str) -> List[Dict[str, Any]]:
@@ -149,33 +147,16 @@ def create_new_account(
     `data` can include:
     - account_type
     - currency
-    - initial_deposit
     """
+    from functions import db_helpers
+
     account_type = data.get("account_type", "Savings")
     currency = data.get("currency", "INR")
-    initial_deposit = float(data.get("initial_deposit", 0) or 0)
 
-    # Simple account number generator: BRANCHID + CUSTOMERID + sequence
-    account_number = f"{branch_id:03d}{customer_id:05d}"
-
-    row = fetch_one(
-        """
-        INSERT INTO accounts (
-            customer_id, branch_id, account_number,
-            balance, account_type, currency
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
-        RETURNING *
-        """,
-        (
-            customer_id,
-            branch_id,
-            account_number,
-            initial_deposit,
-            account_type,
-            currency,
-        ),
+    return db_helpers.create_account(
+        customer_id=customer_id,
+        branch_id=branch_id,
+        account_type=account_type,
+        currency=currency,
     )
-
-    return row
 

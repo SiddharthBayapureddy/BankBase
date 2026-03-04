@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - BankBase{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">System-Wide Admin Dashboard</h2>
+        <p class="card-subtitle">Global oversight of all banking operations.</p>
+    </div>
+
+    <div class="grid grid-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Customers</div>
+            <div class="stat-value">{{ stats.total_customers }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total System Balance</div>
+            <div class="stat-value money">{{ stats.total_balance or 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Active Loans</div>
+            <div class="stat-value">{{ stats.active_loans }}</div>
+            <div class="stat-change">Total Principal: {{ stats.total_loan_principal or 0 }} INR</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-2">
+    <!-- Manual Deposit Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Manual Deposit (Cheque/Cash)</h3>
+            <p class="card-subtitle">Deposit funds directly into any account.</p>
+        </div>
+        <form method="post" action="{{ url_for('admin_deposit') }}">
+            <div class="form-group">
+                <label class="form-label" for="account_id">Target Account</label>
+                <select name="account_id" id="account_id" class="form-select" required>
+                    <option value="">-- Select Account --</option>
+                    {% for acc in accounts %}
+                    <option value="{{ acc.account_id }}">
+                        {{ acc.account_number }} - {{ acc.first_name }} {{ acc.last_name }} (Current: {{ acc.balance }} INR)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="amount">Amount (INR)</label>
+                <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-input" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="description">Description</label>
+                <input type="text" name="description" id="description" class="form-input" placeholder="e.g. Cheque Deposit #12345">
+            </div>
+            <button type="submit" class="btn btn-primary">Deposit Funds</button>
+        </form>
+    </div>
+
+    <!-- System Stats -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">System Metrics</h3>
+        </div>
+        <ul class="list-group">
+            <li class="list-group-item flex justify-between">
+                <span>Total Accounts</span>
+                <span class="font-bold">{{ stats.total_accounts }}</span>
+            </li>
+            <li class="list-group-item flex justify-between">
+                <span>Total Transactions</span>
+                <span class="font-bold">{{ stats.total_transactions }}</span>
+            </li>
+            <li class="list-group-item flex justify-between">
+                <span>Total Branches</span>
+                <span class="font-bold">3</span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-header">
+        <h3 class="card-title">Recent System-Wide Transactions</h3>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Account</th>
+                    <th>Type</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-right">Balance After</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                <tr>
+                    <td>{{ tx.created_at }}</td>
+                    <td>{{ tx.account_number }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if tx.tx_type in ['DEPOSIT', 'CREDIT'] else 'badge-warning' }}">
+                            {{ tx.tx_type }}
+                        </span>
+                    </td>
+                    <td class="text-right money">{{ tx.amount }}</td>
+                    <td class="text-right money">{{ tx.balance_after }}</td>
+                    <td>{{ tx.description }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-header">
+        <h3 class="card-title">All Customer Accounts</h3>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Acc Number</th>
+                    <th>Customer</th>
+                    <th>Branch</th>
+                    <th>Type</th>
+                    <th class="text-right">Balance</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acc in accounts %}
+                <tr>
+                    <td>{{ acc.account_number }}</td>
+                    <td>{{ acc.first_name }} {{ acc.last_name }}</td>
+                    <td>{{ acc.branch_name }}</td>
+                    <td>{{ acc.account_type }}</td>
+                    <td class="text-right money">{{ acc.balance }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if acc.status == 'active' else 'badge-danger' }}">
+                            {{ acc.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

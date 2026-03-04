@@ -52,15 +52,25 @@ def set_account_status(account_id: int, status: str) -> None:
     )
 
 
+def has_outstanding_loans(account_id: int) -> bool:
+    """
+    Check if an account has any outstanding or pending loans.
+    """
+    row = fetch_one(
+        "SELECT COUNT(*) as count FROM loans WHERE linked_account_id = %s AND status IN ('PENDING', 'APPROVED', 'ACTIVE')",
+        (account_id,),
+    )
+    return (row["count"] if row else 0) > 0
+
+
 def create_account(
     customer_id: int,
     branch_id: int,
     account_type: str,
     currency: str,
-    initial_deposit: Decimal,
 ) -> Dict[str, Any]:
     """
-    Create a new account for a customer with an initial balance.
+    Create a new account for a customer with an initial balance of 0.
     """
     # Simple account number generator: BRANCHID + CUSTOMERID + timestamp-based suffix
     import time
@@ -79,14 +89,13 @@ def create_account(
                 account_type,
                 currency
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, 0.0, %s, %s)
             RETURNING *
             """,
             (
                 customer_id,
                 branch_id,
                 account_number,
-                initial_deposit,
                 account_type,
                 currency,
             ),
@@ -158,6 +167,41 @@ def create_transaction(
         with get_cursor(commit=True) as cur:
             _do_insert(cur)
 
+
+def manual_deposit(account_id: int, amount: Decimal, description: str) -> bool:
+    """
+    Perform a manual deposit into an account (e.g., by an admin for a cheque).
+    Ensures the transaction is reflected in the transactions table and account balance.
+    """
+    try:
+        with get_cursor(commit=True) as cur:
+            # Lock the account row
+            cur.execute("SELECT balance FROM accounts WHERE account_id = %s FOR UPDATE", (account_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+
+            current_balance = row["balance"]
+            new_balance = current_balance + amount
+
+            # Update balance
+            cur.execute(
+                "UPDATE accounts SET balance = %s WHERE account_id = %s",
+                (new_balance, account_id)
+            )
+
+            # Insert transaction record
+            cur.execute(
+                """
+                INSERT INTO transactions (
+                    account_id, tx_type, amount, balance_after, description
+                ) VALUES (%s, %s, %s, %s, %s)
+                """,
+                (account_id, 'DEPOSIT', amount, new_balance, description)
+            )
+        return True
+    except Exception:
+        return False
 
 def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
     """(28) Fetch a single loan by ID."""

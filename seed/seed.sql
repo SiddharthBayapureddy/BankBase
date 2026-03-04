@@ -60,7 +60,10 @@ VALUES
 
 -- Vikram Singh (account 5)
 (5, '4532123412345551', 'Debit',  '2029-05-31', '567', 'Active', NULL, 12000),
-(5, '4532123412345552', 'Credit', '2031-08-31', '765', 'Active', 60000, NULL);
+(5, '4532123412345552', 'Credit', '2031-08-31', '765', 'Active', 60000, NULL),
+
+-- Pending Card Request for Branch 1 (Rahul Sharma)
+(1, 'REQ1234567890', 'Debit', '2026-03-05', '000', 'Blocked', 0, -1);
 
 -- Fixed Deposits
 INSERT INTO fixed_deposits 

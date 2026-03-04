@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to BankBase - Secure Banking Simplified{% endblock %}
+
+{% block content %}
+<div class="hero-section text-center" style="padding: 4rem 2rem; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-top: 2rem;">
+    <div class="hero-content" style="max-width: 800px; margin: 0 auto;">
+        <h1 style="font-size: 3rem; color: #1a365d; margin-bottom: 1.5rem; font-weight: 800;">Experience Modern Banking with BankBase</h1>
+        <p style="font-size: 1.25rem; color: #4a5568; line-height: 1.6; margin-bottom: 2.5rem;">
+            A complete relational database system designed for core banking operations. 
+            Manage your accounts, transactions, loans, and fixed deposits with unmatched security and ease.
+        </p>
+        
+        <div class="hero-actions">
+            <a href="{{ url_for('login_page') }}" class="btn btn-primary" style="font-size: 1.2rem; padding: 1rem 3rem; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(49, 130, 206, 0.3);">
+                Enter Banking Portal
+            </a>
+        </div>
+        
+        <div class="hero-features grid grid-3 mt-4" style="text-align: left; gap: 2rem;">
+            <div class="feature-item" style="padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h3 style="color: #2b6cb0; margin-bottom: 0.5rem;">🛡️ Secure</h3>
+                <p style="font-size: 0.95rem; color: #718096;">Advanced encryption and audit trails for every single transaction.</p>
+            </div>
+            <div class="feature-item" style="padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h3 style="color: #2b6cb0; margin-bottom: 0.5rem;">🏦 Seamless</h3>
+                <p style="font-size: 0.95rem; color: #718096;">Integrated loan management, cards, and fixed deposit systems.</p>
+            </div>
+            <div class="feature-item" style="padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h3 style="color: #2b6cb0; margin-bottom: 0.5rem;">📊 Insights</h3>
+                <p style="font-size: 0.95rem; color: #718096;">Detailed statements and branch-level reporting for full oversight.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+        border-bottom: 4px solid #3182ce;
+    }
+    .hero-content h1 {
+        letter-spacing: -0.025em;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        transition: all 0.2s ease;
+    }
+</style>
+{% endblock %}

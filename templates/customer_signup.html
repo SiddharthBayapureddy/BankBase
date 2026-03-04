@@ -49,7 +49,32 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="signupBtn">Sign Up</button>
+        <hr class="my-2">
+        <h3 class="mb-1">Initial Bank Account Details</h3>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label" for="branch_id">Select Branch</label>
+                <select id="branch_id" name="branch_id" class="form-select" required>
+                    <option value="">Select a branch</option>
+                    {% for b in branches %}
+                    <option value="{{ b.branch_id }}">
+                        {{ b.branch_name }} ({{ b.ifsc_code }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="account_type">Account Type</label>
+                <select id="account_type" name="account_type" class="form-select" required>
+                    <option value="Savings">Savings</option>
+                    <option value="Current">Current</option>
+                    <option value="Salary">Salary</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="signupBtn">Sign Up & Open Account</button>
         <p class="mt-2">
             Already have an account?
             <a href="{{ url_for('index') }}">Back to Login</a>
